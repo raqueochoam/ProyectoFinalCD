@@ -8,6 +8,11 @@ interface Message {
   content: string;
 }
 
+interface User {
+  username: string;
+  role: string;
+}
+
 @Component({
   selector: 'app-chat-screen',
   templateUrl: './chat-screen.component.html',
@@ -15,21 +20,10 @@ interface Message {
 })
 export class ChatScreenComponent  implements OnInit {
   @Input() groupName: string = '';
-  messages: Message[] = [
-    {
-      sender: 'John Doe',
-      content: 'Hi',
-    },
-    {
-      sender: 'Jane Smith',
-      content: 'Hi there!',
-    }
-    // Add more messages as needed
-  ];
 
   newMessage: string = '';
 
-  messages2: Array<string | Message> = [];
+  messages2: Array<string | User | Message> = [];
 
   // Cast messages to NgIterable<GroupMessage>
   iterableMessages: NgIterable<Message> = [];
@@ -81,6 +75,7 @@ export class ChatScreenComponent  implements OnInit {
     }
 
     handleGroupNameChange() {
+      this.groupName = this.groupName.replace(/^\s+/, "");
       this.httpRequestsService.getGroupConv(this.groupName).subscribe(
         (result) => {
           console.log(this.httpRequestsService.groupsData[this.groupName]['conv']);
@@ -106,8 +101,24 @@ export class ChatScreenComponent  implements OnInit {
       component: ChatAdminModalComponent,
       backdropDismiss: false,
       cssClass: 'admin-group-modal',
-    });
+      componentProps: {
+        groupName: this.groupName
+      }
+    },);
     modal.present();
   }
 
+  refreshChat(){
+    this.httpRequestsService.getGroupConv(this.groupName).subscribe(
+      (result) => {
+        console.log(this.httpRequestsService.groupsData[this.groupName]['conv']);
+        console.log(this.groupName);
+        this.messages2 = this.httpRequestsService.groupsData[this.groupName]['conv']
+        this.iterableMessages = this.messages2 as NgIterable<Message>;
+      },
+      (error) => {
+        console.log('Login error:', error);
+      }
+    );
+  }
 }

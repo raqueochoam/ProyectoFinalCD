@@ -15,6 +15,7 @@ import { JoinGroupNameInputComponent } from '../join-group-name-input/join-group
 import { ChatScreenComponent } from '../chat-screen/chat-screen.component';
 import { GroupsListComponent } from '../groups-list/groups-list.component';
 import { ChatAdminModalComponent } from '../chat-admin-modal/chat-admin-modal.component';
+import { PendingUsersModalComponent } from '../pending-users-modal/pending-users-modal.component';
 
 @NgModule({
   imports: [CommonModule, FormsModule, IonicModule, MainPageRoutingModule],
@@ -26,7 +27,8 @@ import { ChatAdminModalComponent } from '../chat-admin-modal/chat-admin-modal.co
     JoinGroupNameInputComponent,
     ChatScreenComponent,
     GroupsListComponent,
-    ChatAdminModalComponent
+    ChatAdminModalComponent,
+    PendingUsersModalComponent
   ],
 })
 export class MainPageModule {}

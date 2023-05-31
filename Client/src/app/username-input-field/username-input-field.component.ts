@@ -15,7 +15,8 @@ export class UsernameInputFieldComponent implements OnInit {
   ngOnInit() {}
 
   emit(){
-    this.usernameInput.emit(this.userName);
+    const user = this.userName.replace(/\s/g, "");
+    this.usernameInput.emit(user);
   }
 
 }

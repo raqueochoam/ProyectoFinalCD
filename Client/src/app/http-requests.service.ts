@@ -38,7 +38,9 @@ export class HttpRequestsService {
 
   loggedUsername: string = this.getLoggedUsername();
 
-  loggedUserGroups: string[] = []
+  loggedUserGroups: string[] = [];
+
+  allUsers: string[] = [];
 
   // Create a dictionary
   groupsData: MainDictionary = {};
@@ -152,6 +154,13 @@ export class HttpRequestsService {
       this.testServer(localStorage.getItem('nodeAddress')!, localStorage.getItem('nodePort')!, localStorage.getItem('socketAddress')!, localStorage.getItem('socketPort')!);
     }
   }*/
+
+  logout(){
+    this.loggedUsername = '';
+    this.setLoggedUsername('');
+    this.loggedUserGroups = [];
+    this.groupsData = {};
+  }
 
   testServer2(nodeAddress: string, nodePort: string){
     const fullAddress: string = 'http://'+nodeAddress+':'+nodePort+'/test';
@@ -324,6 +333,10 @@ export class HttpRequestsService {
       map(data => {
         if (data !== 'error') {
           data = data.status;
+          if(data){
+            this.loggedUsername = username;
+            this.setLoggedUsername(username);
+          }
         } else {
           this.makeTest();
           data = false;
@@ -356,6 +369,10 @@ export class HttpRequestsService {
       map(data => {
         if (data !== 'error') {
           data = data.status;
+          if(data){
+            this.loggedUsername = username;
+            this.setLoggedUsername(username);
+          }
         } else {
           this.makeTest();
           data = false;
@@ -483,7 +500,102 @@ export class HttpRequestsService {
       })
     );
   }
-
+  getGroupUsers(groupName: string): Observable<any> {
+    const nodeAddress = this.nodeAddress;
+    const nodePort = this.nodePort;
+    const socketAddress = this.socketAddress;
+    const socketPort = this.socketPort;
+    const url = 'http://' + nodeAddress + ':' + nodePort + '/getGroupUsers';
+    const requestData = {
+      socketAddress: socketAddress,
+      socketPort: socketPort,
+      groupName: groupName
+    };
+    return this.postData(url, requestData).pipe(
+      map(data => {
+        if (data !== 'error') {
+          if(data.users!=''){
+            this.groupsData[groupName]['users'] = [];
+            const lines = data.users.split('\n');
+            let cont = 0;
+            let userName: string = '';
+            let userRole: string = '';
+            let fullUser: GroupUser;
+            let newArray: GroupUser[] = [];
+            for (const userInfo of lines) {
+              if(lines!==''){
+                if(cont%2==0){
+                  userName = userInfo;
+                }else{
+                  userRole = userInfo;
+                  fullUser = {
+                    username: userName,
+                    role: userRole,
+                  }
+                  newArray.push(fullUser);
+                  this.groupsData[groupName]['users'].push(fullUser);
+                }
+                cont++;
+              }
+            }
+            console.log(lines);
+          }
+        } else {
+          this.makeTest();
+          data.status = 0;
+          data.message = "Server Offline";
+          console.log("error connecting to node");
+        }
+        return data.status;
+      }),
+      catchError(error => {
+        // Handle error if needed
+        this.makeTest();
+        console.log('can not connect to socket');
+        return of('error');
+      })
+    );
+  }
+  getGroupPending(groupName: string): Observable<any> {
+    const nodeAddress = this.nodeAddress;
+    const nodePort = this.nodePort;
+    const socketAddress = this.socketAddress;
+    const socketPort = this.socketPort;
+    const url = 'http://' + nodeAddress + ':' + nodePort + '/getGroupPending';
+    const requestData = {
+      socketAddress: socketAddress,
+      socketPort: socketPort,
+      groupName: groupName
+    };
+    return this.postData(url, requestData).pipe(
+      map(data => {
+        if (data !== 'error') {
+          if(data.users!=''){
+            this.groupsData[groupName]['pending'] = [];
+            const lines = data.users.split('\n');
+            for (const userInfo of lines) {
+              if(userInfo!==''){
+                this.groupsData[groupName]['pending'].push(userInfo);
+              }
+            }
+            console.log(lines);
+          }
+        } else {
+          this.makeTest();
+          data.status = 0;
+          data.message = "Server Offline";
+          console.log("error connecting to node");
+        }
+        return data.status;
+      }),
+      catchError(error => {
+        // Handle error if needed
+        this.makeTest();
+        console.log('can not connect to socket');
+        return of('error');
+      })
+    );
+  }
   getGroupConv(groupName: string): Observable<any> {
     const nodeAddress = this.nodeAddress;
     const nodePort = this.nodePort;
@@ -580,10 +692,204 @@ export class HttpRequestsService {
       })
     );
   }
+  addUserToGroup(newUser: string, groupName: string){
+    const nodeAddress = this.nodeAddress;
+    const nodePort = this.nodePort;
+    const socketAddress = this.socketAddress;
+    const socketPort = this.socketPort;
+    const adminUser = this.loggedUsername;
+    const url = 'http://' + nodeAddress + ':' + nodePort + '/addUser';
+    const requestData = {
+      socketAddress: socketAddress,
+      socketPort: socketPort,
+      adminUsername: adminUser,
+      newUsername: newUser,
+      groupName: groupName
+    };
+    return this.postData(url, requestData).pipe(
+      map(data => {
+        if (data !== 'error') {
+          if(data.status){
+            const currentMssg: GroupMessage = {
+              sender: 'Admin',
+              content: adminUser+' added user: '+newUser
+            }
+            const newGroupUser: GroupUser = {
+              username: newUser,
+              role: '0'
+            }
+            this.groupsData[groupName]['users'].push(newGroupUser);
+            this.groupsData[groupName]['conv'].push(currentMssg);
+            console.log("added");
+          }
+        } else {
+          this.makeTest();
+          data.status = 0;
+          data.message = "Server Offline";
+          console.log("error connecting to node");
+        }
+        return data.status;
+      }),
+      catchError(error => {
+        // Handle error if needed
+        this.makeTest();
+        console.log(error);
+        console.log('can not connect to socket');
+        return of('error');
+      })
+    );
+  }
+  acceptJoinRequest(newUser: string, groupName: string){
+    const nodeAddress = this.nodeAddress;
+    const nodePort = this.nodePort;
+    const socketAddress = this.socketAddress;
+    const socketPort = this.socketPort;
+    const adminUser = this.loggedUsername;
+    const url = 'http://' + nodeAddress + ':' + nodePort + '/acceptJoinRequest';
+    const requestData = {
+      socketAddress: socketAddress,
+      socketPort: socketPort,
+      adminUsername: adminUser,
+      newUsername: newUser,
+      groupName: groupName
+    };
+    return this.postData(url, requestData).pipe(
+      map(data => {
+        if (data !== 'error') {
+          if(data.status){
+            const currentMssg: GroupMessage = {
+              sender: 'Admin',
+              content: adminUser+' added user: '+newUser
+            }
+            const newGroupUser: GroupUser = {
+              username: newUser,
+              role: '0'
+            }
+            this.groupsData[groupName]['users'].push(newGroupUser);
+            this.groupsData[groupName]['conv'].push(currentMssg);
+            const pendingUsers = this.groupsData[groupName]['pending'];
+            for (let i = 0; i < pendingUsers.length; i++) {
+              const value = pendingUsers[i];
+
+              if (typeof value === 'string') {
+                if (value === newUser) {
+                  pendingUsers.splice(i, 1); // Remove the element at index i
+                  i--; // Decrement i to account for the removed element
+                  break;
+                }
+              }
+            }
+            console.log("added");
+          }
+        } else {
+          this.makeTest();
+          data.status = 0;
+          data.message = "Server Offline";
+          console.log("error connecting to node");
+        }
+        return data.status;
+      }),
+      catchError(error => {
+        // Handle error if needed
+        this.makeTest();
+        console.log(error);
+        console.log('can not connect to socket');
+        return of('error');
+      })
+    );
+  }
+  rejectJoinRequest(newUser: string, groupName: string){
+    const nodeAddress = this.nodeAddress;
+    const nodePort = this.nodePort;
+    const socketAddress = this.socketAddress;
+    const socketPort = this.socketPort;
+    const adminUser = this.loggedUsername;
+    const url = 'http://' + nodeAddress + ':' + nodePort + '/rejectJoinRequest';
+    const requestData = {
+      socketAddress: socketAddress,
+      socketPort: socketPort,
+      adminUsername: adminUser,
+      newUsername: newUser,
+      groupName: groupName
+    };
+    return this.postData(url, requestData).pipe(
+      map(data => {
+        if (data !== 'error') {
+          if(data.status){
+            const pendingUsers = this.groupsData[groupName]['pending'];
+            for (let i = 0; i < pendingUsers.length; i++) {
+              const value = pendingUsers[i];
+
+              if (typeof value === 'string') {
+                if (value === newUser) {
+                  pendingUsers.splice(i, 1); // Remove the element at index i
+                  i--; // Decrement i to account for the removed element
+                  break;
+                }
+              }
+            }
+            console.log("rejected");
+          }
+        } else {
+          this.makeTest();
+          data.status = 0;
+          data.message = "Server Offline";
+          console.log("error connecting to node");
+        }
+        return data.status;
+      }),
+      catchError(error => {
+        // Handle error if needed
+        this.makeTest();
+        console.log(error);
+        console.log('can not connect to socket');
+        return of('error');
+      })
+    );
+  }
+  getUsers(): Observable<any> {
+    const nodeAddress = this.nodeAddress;
+    const nodePort = this.nodePort;
+    const socketAddress = this.socketAddress;
+    const socketPort = this.socketPort;
+    const url = 'http://' + nodeAddress + ':' + nodePort + '/getUsers';
+    const requestData = {
+      socketAddress: socketAddress,
+      socketPort: socketPort,
+    };
+    return this.postData(url, requestData).pipe(
+      map(data => {
+        if (data !== 'error') {
+          if(data.users!=''){
+            this.allUsers = [];
+            const lines = data.users.split('\n');
+            for (const username of lines) {
+              if(username!==''){
+                this.allUsers.push(username);
+              }
+            }
+            console.log(lines);
+          }
+        } else {
+          this.makeTest();
+          data.status = 0;
+          data.message = "Server Offline";
+          console.log("error connecting to node");
+        }
+        return data.status;
+      }),
+      catchError(error => {
+        // Handle error if needed
+        this.makeTest();
+        console.log('can not connect to socket');
+        return of('error');
+      })
+    );
+  }
 }
 // Define the nested dictionary interface
 interface NestedDictionary {
-  [key: string]: Array<string | GroupMessage>;
+  [key: string]: Array<string | GroupUser | GroupMessage>;
 }
 
 // Define the main dictionary interface
@@ -594,4 +900,9 @@ interface MainDictionary {
 interface GroupMessage {
   sender: string;
   content: string;
+}
+
+interface GroupUser {
+  username: string;
+  role: string;
 }

@@ -38,8 +38,7 @@ export class MainPage implements OnInit {
   }
 
   logout(){
-    this.httpRequestsService.setLoggedUsername('');
-    this.httpRequestsService.loggedUsername = '';
+    this.httpRequestsService.logout();
     this.router.navigateByUrl('/home', { replaceUrl: true });
   }
 

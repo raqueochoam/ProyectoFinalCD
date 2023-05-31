@@ -27,7 +27,7 @@
         <ion-button [disabled]="!httpRequestsService.nodeServerActive||!httpRequestsService.socketServerActive" class="custom-button" [routerLink]="['/register']">Register</ion-button>
       </ion-col>
     </ion-row>
-    <ion-row *ngIf="!isMobile" class="ion-justify-content-center">
+    <ion-row *ngIf="isMobile" class="ion-justify-content-center">
       <ion-col size="6" size-sm="4" size-md="3" size-lg="1" class="ion-text-center">
         <ion-button class="custom-button" (click)="closeApp()">Exit</ion-button>
       </ion-col>
