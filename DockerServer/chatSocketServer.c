@@ -219,7 +219,7 @@ int main(){
             return 1;
         }
         char groupUserLine[40];
-        char groupUsernameLine[35];
+        char groupUsernameLine[40];
         char groupUserRoleLine[10];
         while (fgets(groupUserLine, sizeof(groupUserLine), groupusersTxt) != NULL) {
             groupUserLine[strcspn(groupUserLine, "\n")] = '\0'; // Remove trailing newline character
@@ -227,11 +227,15 @@ int main(){
             // Get the first token
             token = strtok(groupUserLine, " ");
             strcpy(groupUsernameLine,token);
-            token = strtok(groupUserLine, " ");
+            strcat(groupUsernameLine,"");
+            printf("%s\n", groupUsernameLine);
+            token = strtok(NULL, " ");
             strcpy(groupUserRoleLine,token);
+            printf("%s\n",groupUserRoleLine);
             strcpy(sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].username, groupUsernameLine);
+            strcat(sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].username, "\0");
             sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].role = atoi(groupUserRoleLine);
-            sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].username[strlen(sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].username)] = '\0';
+            printf("users %s %d\n", sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].username, sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].role);
             sharedData->groups[i].numUsers++;
             if (sharedData->groups[i].numUsers >= MAX_USERS) {
                 printf("Maximum number of users reached.\n");
@@ -253,7 +257,8 @@ int main(){
         while (fgets(groupPendUserLine, sizeof(groupPendUserLine), grouppendusersTxt) != NULL) {
             groupPendUserLine[strcspn(groupPendUserLine, "\n")] = '\0'; // Remove trailing newline character
             strcpy(sharedData->groups[i].groupPendUsers[sharedData->groups[i].numPendUsers], groupPendUserLine);
-            sharedData->groups[i].groupPendUsers[sharedData->groups[i].numPendUsers][strlen(sharedData->groups[i].groupPendUsers[sharedData->groups[i].numPendUsers])] = '\0';
+            strcat(sharedData->groups[i].groupPendUsers[sharedData->groups[i].numPendUsers], "\0");
+            printf("pendUsers %s\n", sharedData->groups[i].groupPendUsers[sharedData->groups[i].numPendUsers]);
             sharedData->groups[i].numPendUsers++;          
             if (sharedData->groups[i].numPendUsers >= MAX_USERS) {
                 printf("Maximum number of pending users reached.\n");
@@ -536,7 +541,7 @@ int main(){
                     fclose(groupusersTxt); // Cierra el archivo
                     printf("Archivo users creado exitosamente.\n");
                     //
-                    strcpy(sharedData->groups[sharedData->numGroups].groupUsers[sharedData->groups[sharedData->numGroups].numUsers].username,groupCreator);
+                    strcpy(sharedData->groups[sharedData->numGroups].groupUsers[sharedData->groups[sharedData->numGroups].numUsers].username,username);
                     sharedData->groups[sharedData->numGroups].groupUsers[sharedData->groups[sharedData->numGroups].numUsers].username[strlen(sharedData->groups[sharedData->numGroups].groupUsers[sharedData->groups[sharedData->numGroups].numUsers].username)] = '\0';
                     sharedData->groups[sharedData->numGroups].groupUsers[sharedData->groups[sharedData->numGroups].numUsers].role = 2;
                     sharedData->groups[sharedData->numGroups].numUsers++;
@@ -755,6 +760,106 @@ int main(){
                 }
                 close(sd_actual);
                 exit(1);
+            }else if(!strcmp(action,"getGroupUsers")){
+                char groupName[30];
+                strcpy(groupName, eventData[1]);
+                decipherString(groupName);
+                char groupUsers[msgSIZE] = "";
+                int sent;
+                char retMsg[msgSIZE];
+                for (int i = 0; i < sharedData->numGroups; i++)
+                {
+                    //printf("%s %s %d\n",sharedData->groups[i].groupName,groupName, sharedData->groups[i].numPendUsers);
+                    if(strcmp(sharedData->groups[i].groupName,groupName)==0){
+                        for (int j = 0; j < sharedData->groups[i].numUsers; j++)
+                        {
+                            //printf("%s %s\n",sharedData->groups[i].groupPendUsers[j], username);
+                            strcat(groupUsers, sharedData->groups[i].groupUsers[j].username);
+                            strcat(groupUsers,"\n");
+                            char r[5];
+                            sprintf(r, "%d", sharedData->groups[i].groupUsers[j].role); // Convert integer to string
+                            printf("%s\n",r);
+                            strcat(groupUsers, r);
+                            strcat(groupUsers,"\n");
+                            //printf("new line %s content %s\n", sharedData->groups[i].groupConv[j].sender, sharedData->groups[i].groupConv[j].content);
+                        }
+                        break;
+                    }
+                }
+                if(strcmp(groupUsers,"")==0){
+                    strcpy(groupUsers,"NA");
+                }
+                strcat(groupUsers,"\0");
+                printf("%s \n",groupUsers);
+                strcpy(retMsg,groupUsers);
+                strcat(retMsg, "\0");
+                printf("%s \n",retMsg);
+                sent = send(sd_actual, retMsg, strlen(retMsg), 0);
+                printf("Users sent\n");
+                if ( sent == -1) {
+                    printf("%s\n",retMsg);
+                    perror("send");
+                    exit(1);
+                }
+                printf("Client Disconnected\n");
+                // Detach from the shared memory segment
+                if (shmdt(sharedData) == -1) {
+                    perror("shmdt");
+                    exit(1);
+                }
+                close(sd_actual);
+                exit(1);
+            }else if(!strcmp(action,"getGroupPending")){
+                printf("enter pend\n");
+                char groupName[30];
+                printf("1\n");
+                strcpy(groupName, eventData[1]);
+                printf("2\n");
+                decipherString(groupName);
+                printf("3\n");
+                char groupPendingUsers[msgSIZE] = "";
+                printf("4\n");
+                int sent;
+                printf("5\n");
+                char retMsg[msgSIZE];
+                printf("standby\n");
+                for (int i = 0; i < sharedData->numGroups; i++)
+                {
+                    printf("%s %s %d\n",sharedData->groups[i].groupName,groupName, sharedData->groups[i].numPendUsers);
+                    if(strcmp(sharedData->groups[i].groupName,groupName)==0){
+                        for (int j = 0; j < sharedData->groups[i].numPendUsers; j++)
+                        {
+                            //printf("%s %s\n",sharedData->groups[i].groupPendUsers[j], username);
+                            strcat(groupPendingUsers, sharedData->groups[i].groupPendUsers[j]);
+                            strcat(groupPendingUsers,"\n");
+                        }
+                        break;
+                    }
+                }
+                printf("pendd\n");
+                if(strcmp(groupPendingUsers,"")==0){
+                    strcpy(groupPendingUsers,"NA");
+                }
+                strcat(groupPendingUsers,"\0");
+                printf("%s \n",groupPendingUsers);
+                strcpy(retMsg,groupPendingUsers);
+                strcat(retMsg, "\0");
+                printf("%s \n",retMsg);
+                sent = send(sd_actual, retMsg, strlen(retMsg), 0);
+                printf("Pending Users sent\n");
+                if ( sent == -1) {
+                    printf("%s\n",retMsg);
+                    perror("send");
+                    exit(1);
+                }
+                printf("Client Disconnected\n");
+                // Detach from the shared memory segment
+                if (shmdt(sharedData) == -1) {
+                    perror("shmdt");
+                    exit(1);
+                }
+                close(sd_actual);
+                exit(1);
             }else if(!strcmp(action,"getGroupConv")){
                 char groupName[30];
                 strcpy(groupName, eventData[1]);
@@ -844,7 +949,7 @@ int main(){
                 strcpy(newMssgSender, username);
                 strcat(newMssgSender, "\n");
                 fprintf(newgroupconvTxt, "%s", newMssgSender);
-                char newMssgContent[30];
+                char newMssgContent[100];
                 strcpy(newMssgContent, message);
                 strcat(newMssgContent, "\n");
                 fprintf(newgroupconvTxt, "%s", newMssgContent);
@@ -861,6 +966,382 @@ int main(){
                     exit(1);
                 }
                 printf("Client Sent Message Disconnected\n");
+                // Detach from the shared memory segment
+                if (shmdt(sharedData) == -1) {
+                    perror("shmdt");
+                    exit(1);
+                }
+                close(sd_actual);
+                exit(1);
+            }else if(!strcmp(action,"addUser")){
+                char adminUsername[40];
+                strcpy(adminUsername, eventData[1]);
+                decipherString(adminUsername);
+                char newUsername[40];
+                strcpy(newUsername, eventData[2]);
+                decipherString(newUsername);
+                char groupName[40];
+                strcpy(groupName, eventData[3]);
+                decipherString(groupName);     
+                //
+                // Add newUser message to groupname.conv conversation
+                FILE *newgroupconvTxt;
+                char newconvTxt[30];
+                strcpy(newconvTxt, groupName);
+                strcat(newconvTxt, ".conv");
+                newgroupconvTxt = fopen(newconvTxt, "a"); // Abre el archivo en modo de escritura
+                if (newgroupconvTxt == NULL) {
+                    printf("No se pudo crear el archivo.\n");
+                    return 1;
+                }
+                // Check if the last character of the file is a newline character
+                fseek(newgroupconvTxt, -1, SEEK_END);
+                char lastChar;
+                if (ftell(newgroupconvTxt) > 0) {
+                    lastChar = fgetc(newgroupconvTxt);
+                } else {
+                    lastChar = '\n'; // If file is empty, set lastChar to null character
+                }
+                char newMssgSender[30];
+                strcpy(newMssgSender, "Admin");
+                strcat(newMssgSender, "\n");
+                fprintf(newgroupconvTxt, "%s", newMssgSender);
+                char newMssgContent[100];
+                char newMssgContent2[100];
+                strcpy(newMssgContent, adminUsername);
+                strcat(newMssgContent, " added user: ");
+                strcat(newMssgContent, newUsername);
+                strcpy(newMssgContent2, newMssgContent);
+                strcat(newMssgContent, "\n");
+                fprintf(newgroupconvTxt, "%s", newMssgContent);
+                fclose(newgroupconvTxt); // Cierra el archivo
+                //
+                // Add groupname to username.groups // Save group in user.groups file
+                FILE *usergroupsTxt;
+                char userGroups[30];
+                strcpy(userGroups, newUsername);
+                strcat(userGroups, ".groups");
+                usergroupsTxt = fopen(userGroups, "a"); // Open the file in append mode
+                if (usergroupsTxt == NULL) {
+                    printf("No se pudo abrir el archivo.\n");
+                    return 1;
+                }
+                // Check if the last character of the file is a newline character
+                fseek(usergroupsTxt, -1, SEEK_END);
+                char lastChar2;
+                if (ftell(usergroupsTxt) > 0) {
+                    lastChar2 = fgetc(usergroupsTxt);
+                } else {
+                    lastChar2 = '\n'; // If file is empty, set lastChar to null character
+                }
+                char userGroup[30];
+                strcpy(userGroup, groupName);
+                strcat(userGroup,"\n");
+                fprintf(usergroupsTxt, "%s", userGroup);
+                fclose(usergroupsTxt); // Close the file
+                //
+                //
+                // Add to groupname.user the newUser and write username as 'username 0', # = {0:member, 1:admin, 2:creator}
+                FILE *groupusersTxt;
+                char usersTxt[40];
+                strcpy(usersTxt, groupName);
+                strcat(usersTxt, ".users");
+                groupusersTxt = fopen(usersTxt, "a");
+                if (groupusersTxt == NULL) {
+                    printf("No se pudo crear el archivo.\n");
+                    return 1;
+                }
+                // Write content to the file
+                char newGroupUser[30];
+                strcpy(newGroupUser, newUsername);
+                strcat(newGroupUser, " 0\n");
+                fprintf(groupusersTxt, "%s", newGroupUser);
+                fclose(groupusersTxt); // Cierra el archivo
+                printf("Archivo users creado exitosamente.\n");
+                //
+                //
+                for (int i = 0; i < sharedData->numGroups; i++)
+                {
+                    if(strcmp(sharedData->groups[i].groupName,groupName)==0){
+                        strcpy(sharedData->groups[i].groupConv[sharedData->groups[i].numMssgs].content, newMssgContent2);
+                        strcpy(sharedData->groups[i].groupConv[sharedData->groups[i].numMssgs].sender, "Admin");  
+                        sharedData->groups[i].numMssgs++;
+                        strcpy(sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].username, newUsername);
+                        sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].role = 0;  
+                        sharedData->groups[i].numUsers++;
+                        break;
+                    }
+                }
+                for (int i = 0; i < sharedData->numUsers; i++)
+                {
+                    if(strcmp(sharedData->usersCredentials[i].username,newUsername)==0){
+                        strcpy(sharedData->usersCredentials[i].groups[sharedData->usersCredentials[i].numUserGroups], groupName);
+                        sharedData->usersCredentials[i].numUserGroups++;
+                        break;
+                    }
+                }
+                
+                int sent;
+                char retMsg[msgSIZE];
+                strcpy(retMsg,"1");
+                printf("** %s\n",retMsg);
+                sent = send(sd_actual, retMsg, strlen(retMsg), 0);
+                printf("Mssg Sent\n");
+                if ( sent == -1) {
+                    printf("%s\n",retMsg);
+                    perror("send");
+                    exit(1);
+                }
+                printf("Client Add User Disconnected\n");
+                // Detach from the shared memory segment
+                if (shmdt(sharedData) == -1) {
+                    perror("shmdt");
+                    exit(1);
+                }
+                close(sd_actual);
+                exit(1);
+            }else if(!strcmp(action,"acceptJoinRequest")){
+                char adminUsername[40];
+                strcpy(adminUsername, eventData[1]);
+                decipherString(adminUsername);
+                char newUsername[40];
+                strcpy(newUsername, eventData[2]);
+                decipherString(newUsername);
+                char groupName[40];
+                strcpy(groupName, eventData[3]);
+                decipherString(groupName);     
+                //
+                // Add newUser message to groupname.conv conversation
+                FILE *newgroupconvTxt;
+                char newconvTxt[30];
+                strcpy(newconvTxt, groupName);
+                strcat(newconvTxt, ".conv");
+                newgroupconvTxt = fopen(newconvTxt, "a"); // Abre el archivo en modo de escritura
+                if (newgroupconvTxt == NULL) {
+                    printf("No se pudo crear el archivo.\n");
+                    return 1;
+                }
+                // Check if the last character of the file is a newline character
+                fseek(newgroupconvTxt, -1, SEEK_END);
+                char lastChar;
+                if (ftell(newgroupconvTxt) > 0) {
+                    lastChar = fgetc(newgroupconvTxt);
+                } else {
+                    lastChar = '\n'; // If file is empty, set lastChar to null character
+                }
+                char newMssgSender[30];
+                strcpy(newMssgSender, "Admin");
+                strcat(newMssgSender, "\n");
+                fprintf(newgroupconvTxt, "%s", newMssgSender);
+                char newMssgContent[100];
+                char newMssgContent2[100];
+                strcpy(newMssgContent, adminUsername);
+                strcat(newMssgContent, " added user: ");
+                strcat(newMssgContent, newUsername);
+                strcpy(newMssgContent2, newMssgContent);
+                strcat(newMssgContent, "\n");
+                fprintf(newgroupconvTxt, "%s", newMssgContent);
+                fclose(newgroupconvTxt); // Cierra el archivo
+                //
+                // Add groupname to username.groups // Save group in user.groups file
+                FILE *usergroupsTxt;
+                char userGroups[30];
+                strcpy(userGroups, newUsername);
+                strcat(userGroups, ".groups");
+                usergroupsTxt = fopen(userGroups, "a"); // Open the file in append mode
+                if (usergroupsTxt == NULL) {
+                    printf("No se pudo abrir el archivo.\n");
+                    return 1;
+                }
+                // Check if the last character of the file is a newline character
+                fseek(usergroupsTxt, -1, SEEK_END);
+                char lastChar2;
+                if (ftell(usergroupsTxt) > 0) {
+                    lastChar2 = fgetc(usergroupsTxt);
+                } else {
+                    lastChar2 = '\n'; // If file is empty, set lastChar to null character
+                }
+                char userGroup[30];
+                strcpy(userGroup, groupName);
+                strcat(userGroup,"\n");
+                fprintf(usergroupsTxt, "%s", userGroup);
+                fclose(usergroupsTxt); // Close the file
+                //
+                //
+                // Add to groupname.user the newUser and write username as 'username 0', # = {0:member, 1:admin, 2:creator}
+                FILE *groupusersTxt;
+                char usersTxt[40];
+                strcpy(usersTxt, groupName);
+                strcat(usersTxt, ".users");
+                groupusersTxt = fopen(usersTxt, "a");
+                if (groupusersTxt == NULL) {
+                    printf("No se pudo crear el archivo.\n");
+                    return 1;
+                }
+                // Write content to the file
+                char newGroupUser[30];
+                strcpy(newGroupUser, newUsername);
+                strcat(newGroupUser, " 0\n");
+                fprintf(groupusersTxt, "%s", newGroupUser);
+                fclose(groupusersTxt); // Cierra el archivo
+                printf("Archivo users creado exitosamente.\n");
+                //
+                // Remove user from pending user, groupname.pendusers
+                FILE *grouppendusersTxt;
+                char pendusersTxt[40];
+                strcpy(pendusersTxt, groupName);
+                strcat(pendusersTxt, ".pendusers");
+                grouppendusersTxt = fopen(pendusersTxt, "w");
+                if (grouppendusersTxt == NULL) {
+                    printf("No se pudo crear el archivo.\n");
+                    return 1;
+                }
+                // Write content to the file
+                char pendUserLine[40];
+                //
+                for (int i = 0; i < sharedData->numGroups; i++)
+                {
+                    if(strcmp(sharedData->groups[i].groupName,groupName)==0){
+                        strcpy(sharedData->groups[i].groupConv[sharedData->groups[i].numMssgs].content, newMssgContent2);
+                        strcpy(sharedData->groups[i].groupConv[sharedData->groups[i].numMssgs].sender, "Admin");  
+                        sharedData->groups[i].numMssgs++;
+                        strcpy(sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].username, newUsername);
+                        sharedData->groups[i].groupUsers[sharedData->groups[i].numUsers].role = 0;  
+                        sharedData->groups[i].numUsers++;
+                        for (int j = 0; j < sharedData->groups[i].numPendUsers; j++)
+                        {
+                            if (!strcmp(sharedData->groups[i].groupPendUsers[j],newUsername))
+                            {
+                                strcpy(sharedData->groups[i].groupPendUsers[j],"");
+                            }
+                            printf("newPend %s\n",sharedData->groups[i].groupPendUsers[j]);
+                            if (strcmp(sharedData->groups[i].groupPendUsers[j],""))
+                            {
+                                strcpy(pendUserLine, sharedData->groups[i].groupPendUsers[j]);
+                                strcat(pendUserLine, "\n");
+                                fprintf(grouppendusersTxt, "%s", pendUserLine);
+                            }                            
+                        }
+                        fclose(grouppendusersTxt); // Cierra el archivo
+                        break;
+                    }
+                }
+                for (int i = 0; i < sharedData->numUsers; i++)
+                {
+                    if(strcmp(sharedData->usersCredentials[i].username,newUsername)==0){
+                        strcpy(sharedData->usersCredentials[i].groups[sharedData->usersCredentials[i].numUserGroups], groupName);
+                        sharedData->usersCredentials[i].numUserGroups++;
+                        break;
+                    }
+                }
+                int sent;
+                char retMsg[msgSIZE];
+                strcpy(retMsg,"1");
+                printf("** %s\n",retMsg);
+                sent = send(sd_actual, retMsg, strlen(retMsg), 0);
+                printf("Mssg Sent\n");
+                if ( sent == -1) {
+                    printf("%s\n",retMsg);
+                    perror("send");
+                    exit(1);
+                }
+                printf("Client Add User Disconnected\n");
+                // Detach from the shared memory segment
+                if (shmdt(sharedData) == -1) {
+                    perror("shmdt");
+                    exit(1);
+                }
+                close(sd_actual);
+                exit(1);
+            }else if(!strcmp(action,"rejectJoinRequest")){
+                char adminUsername[40];
+                strcpy(adminUsername, eventData[1]);
+                decipherString(adminUsername);
+                char newUsername[40];
+                strcpy(newUsername, eventData[2]);
+                decipherString(newUsername);
+                char groupName[40];
+                strcpy(groupName, eventData[3]);
+                decipherString(groupName);     
+                //
+                // Remove user from pending user, groupname.pendusers
+                FILE *grouppendusersTxt;
+                char pendusersTxt[40];
+                strcpy(pendusersTxt, groupName);
+                strcat(pendusersTxt, ".pendusers");
+                grouppendusersTxt = fopen(pendusersTxt, "w");
+                if (grouppendusersTxt == NULL) {
+                    printf("No se pudo crear el archivo.\n");
+                    return 1;
+                }
+                // Write content to the file
+                char pendUserLine[40];
+                //
+                for (int i = 0; i < sharedData->numGroups; i++)
+                {
+                    if(strcmp(sharedData->groups[i].groupName,groupName)==0){
+                        for (int j = 0; j < sharedData->groups[i].numPendUsers; j++)
+                        {
+                            if (!strcmp(sharedData->groups[i].groupPendUsers[j],newUsername))
+                            {
+                                strcpy(sharedData->groups[i].groupPendUsers[j],"");
+                            }
+                            printf("newPend %s\n",sharedData->groups[i].groupPendUsers[j]);
+                            if (strcmp(sharedData->groups[i].groupPendUsers[j],""))
+                            {
+                                strcpy(pendUserLine, sharedData->groups[i].groupPendUsers[j]);
+                                strcat(pendUserLine, "\n");
+                                fprintf(grouppendusersTxt, "%s", pendUserLine);
+                            }                            
+                        }
+                        fclose(grouppendusersTxt); // Cierra el archivo
+                        break;
+                    }
+                }
+                int sent;
+                char retMsg[msgSIZE];
+                strcpy(retMsg,"1");
+                printf("** %s\n",retMsg);
+                sent = send(sd_actual, retMsg, strlen(retMsg), 0);
+                printf("Mssg Sent\n");
+                if ( sent == -1) {
+                    printf("%s\n",retMsg);
+                    perror("send");
+                    exit(1);
+                }
+                printf("Client Reject User Disconnected\n");
+                // Detach from the shared memory segment
+                if (shmdt(sharedData) == -1) {
+                    perror("shmdt");
+                    exit(1);
+                }
+                close(sd_actual);
+                exit(1);
+            }else if(!strcmp(action,"getUsers")){
+                char users[msgSIZE] = "";
+                int sent;
+                char retMsg[msgSIZE];
+                for (int i = 0; i < sharedData->numUsers; i++)
+                {
+                    strcat(users, sharedData->usersCredentials[i].username);
+                    strcat(users,"\n");
+                }
+                if(strcmp(users,"")==0){
+                    strcpy(users,"NA");
+                }
+                strcat(users,"\0");
+                printf("%s \n",users);
+                strcpy(retMsg,users);
+                strcat(retMsg, "\0");
+                printf("%s \n",retMsg);
+                sent = send(sd_actual, retMsg, strlen(retMsg), 0);
+                printf("Users sent\n");
+                if ( sent == -1) {
+                    printf("%s\n",retMsg);
+                    perror("send");
+                    exit(1);
+                }
+                printf("Client Disconnected\n");
                 // Detach from the shared memory segment
                 if (shmdt(sharedData) == -1) {
                     perror("shmdt");

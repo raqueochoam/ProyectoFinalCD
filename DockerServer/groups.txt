@@ -1,5 +1,0 @@
-grupo_1
-nuevo_grupo
-sala1
-sala2
-sala3
